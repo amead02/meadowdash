@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bunny Run: Meadow Dash</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.1) 100%);
+        }
+
+        .top-bar {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .score-display {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 24px;
+            border-radius: 50px;
+            font-size: 26px;
+            font-weight: 800;
+            color: #e67e22;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 3px solid #fff;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.1);
+        }
+
+        .powerup-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .power-badge {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .power-badge.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .timer-bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: #f1c40f;
+            width: 100%;
+            transform-origin: left;
+            transition: transform 0.1s linear;
+        }
+
+        /* Menus */
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .hidden { 
+            opacity: 0; 
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        h1 {
+            color: white;
+            font-size: 56px;
+            margin: 0 0 10px 0;
+            text-align: center;
+            text-shadow: 0 5px 0 rgba(0,0,0,0.2);
+            line-height: 1.0;
+            font-weight: 900;
+            background: linear-gradient(to bottom, #fff, #ffeaa7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        p { color: #f1f2f6; font-size: 18px; margin-bottom: 30px; text-align: center; max-width: 320px; line-height: 1.5; font-weight: 500; }
+
+        /* Avatar Selection Styles */
+        .avatar-label {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .avatar-select {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 50px;
+        }
+
+        .avatar-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.2s, border-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .avatar-option:hover {
+            transform: scale(1.1);
+        }
+
+        .avatar-option.selected {
+            border-color: #2ecc71;
+            transform: scale(1.2);
+            box-shadow: 0 0 15px #2ecc71;
+        }
+        
+        .avatar-option.selected::after {
+            content: '✓';
+            color: #2ecc71;
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .btn-main {
+            background: linear-gradient(to bottom, #2ecc71, #27ae60);
+            border: none;
+            padding: 18px 60px;
+            border-radius: 40px;
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            text-transform: uppercase;
+            box-shadow: 0 6px 0 #1e8449, 0 15px 25px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-main:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #1e8449;
+        }
+
+        .collision-marker {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(0, 100, 255, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.2s;
+            z-index: 5;
+        }
+
+        #loading {
+            position: absolute;
+            bottom: 20px;
+            color: white;
+            font-size: 14px;
+            opacity: 0.8;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container"></div>
+    <div id="collision-fx" class="collision-marker"></div>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="score-display">
+                <span id="score-text">0</span>m
+            </div>
+            <div class="powerup-container">
+                <div id="badge-magnet" class="power-badge">
+                    <span>🧲 MAGNET</span>
+                    <div class="timer-bar"><div class="timer-fill" id="fill-magnet"></div></div>
+                </div>
+                <div id="badge-shield" class="power-badge">
+                    <span>🛡️ SHIELD</span>
+                    <div class="timer-bar"><div class="timer-fill" id="fill-shield"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="menu-overlay">
+            <h1>MEADOW<br>DASH</h1>
+            <p>Run far and fast!<br>Hop on logs to cross rivers.</p>
+            
+            <div class="avatar-label">Choose Bunny</div>
+            <div class="avatar-select">
+                <div class="avatar-option selected" data-color="#ffffff" style="background: #ffffff;" title="Snowball"></div>
+                <div class="avatar-option" data-color="#8d5524" style="background: #8d5524;" title="Cocoa"></div>
+                <div class="avatar-option" data-color="#a0a0a0" style="background: #a0a0a0;" title="Dusty"></div>
+                <div class="avatar-option" data-color="#ffb7c5" style="background: #ffb7c5;" title="Pinky"></div>
+            </div>
+
+            <button class="btn-main" id="btn-start">RUN!</button>
+            <div id="loading">Loading World...</div>
+        </div>
+
+        <!-- Game Over -->
+        <div id="game-over-screen" class="menu-overlay hidden">
+            <h1 style="font-size: 48px; -webkit-text-fill-color: #ff6b6b;">SPLASH!</h1>
+            <p id="death-reason">You fell in the stream!</p>
+            <div class="score-display" style="margin-bottom: 30px;">
+                Distance: <span id="final-score">0</span>m
+            </div>
+            <button class="btn-main" id="btn-restart" style="background: linear-gradient(to bottom, #3498db, #2980b9); box-shadow: 0 6px 0 #1c5980;">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        /**
+         * MEADOW DASH (FIXED RIVER & AVATARS)
+         * - Spawning Logic fixed to prevent Overlapping Rivers
+         * - Collision Logic fixed to correctly check all lanes for water
+         */
+
+        const CONFIG = {
+            laneWidth: 2.2,
+            speedBase: 14,
+            speedMax: 45, 
+            acceleration: 0.4, 
+            gravity: 45,
+            jumpForce: 18,
+            rollTime: 0.5,
+            colors: {
+                fog: 0x87CEEB,
+                ambient: 0xffffff,
+                sun: 0xfff5e6
+            }
+        };
+
+        const STATE = {
+            running: false,
+            score: 0,
+            distance: 0, 
+            speed: CONFIG.speedBase,
+            lane: 0,
+            z: 0,
+            y: 0,
+            vy: 0,
+            isJumping: false,
+            isRolling: false,
+            rollTimer: 0,
+            magnet: 0,
+            shield: 0,
+            animTime: 0,
+            nextSpawnZ: -20
+        };
+
+        // Globals
+        let scene, camera, renderer, clock;
+        let bunnyRig = { group: null, frontLegs: [], backLegs: [], ears: [], tail: null, head: null };
+        let worldContainer;
+        let objects = [];
+        let mats = {};
+        
+        const ui = {
+            score: document.getElementById('score-text'),
+            finalScore: document.getElementById('final-score'),
+            start: document.getElementById('start-screen'),
+            gameOver: document.getElementById('game-over-screen'),
+            deathReason: document.getElementById('death-reason'),
+            magnetBadge: document.getElementById('badge-magnet'),
+            magnetFill: document.getElementById('fill-magnet'),
+            shieldBadge: document.getElementById('badge-shield'),
+            shieldFill: document.getElementById('fill-shield'),
+            loading: document.getElementById('loading'),
+            collision: document.getElementById('collision-fx'),
+            avatarOptions: document.querySelectorAll('.avatar-option')
+        };
+
+        // --- Texture Generation ---
+        function generateTextures() {
+            // Fur
+            const furC = document.createElement('canvas');
+            furC.width = 256; furC.height = 256;
+            const ctxF = furC.getContext('2d');
+            ctxF.fillStyle = '#ffffff'; 
+            ctxF.fillRect(0,0,256,256);
+            for(let i=0; i<3000; i++) {
+                const val = 240 + Math.random()*15;
+                ctxF.fillStyle = `rgb(${val},${val},${val})`;
+                ctxF.fillRect(Math.random()*256, Math.random()*256, 2, 2);
+            }
+            const texFur = new THREE.CanvasTexture(furC);
+
+            // Fluff
+            const fluffC = document.createElement('canvas');
+            fluffC.width = 256; fluffC.height = 256;
+            const ctxFluff = fluffC.getContext('2d');
+            ctxFluff.fillStyle = '#ffffff';
+            ctxFluff.fillRect(0,0,256,256);
+            const texFluff = new THREE.CanvasTexture(fluffC);
+            
+            // Grass
+            const grassC = document.createElement('canvas');
+            grassC.width = 512; grassC.height = 512;
+            const ctxG = grassC.getContext('2d');
+            ctxG.fillStyle = '#4a8522'; 
+            ctxG.fillRect(0,0,512,512);
+            for(let i=0; i<2000; i++) {
+                ctxG.fillStyle = 'rgba(50, 90, 30, 0.05)';
+                ctxG.beginPath();
+                ctxG.arc(Math.random()*512, Math.random()*512, Math.random()*20, 0, Math.PI*2);
+                ctxG.fill();
+            }
+            for(let i=0; i<8000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const len = Math.random() * 8 + 4;
+                const angle = (Math.random()-0.5) * 1.5; 
+                const hue = 80 + Math.random() * 40; 
+                ctxG.strokeStyle = `hsl(${hue}, 50%, 40%)`;
+                ctxG.lineWidth = 1;
+                ctxG.beginPath();
+                ctxG.moveTo(x,y);
+                ctxG.lineTo(x + Math.sin(angle)*len, y - Math.cos(angle)*len);
+                ctxG.stroke();
+            }
+            const texGrass = new THREE.CanvasTexture(grassC);
+            texGrass.wrapS = THREE.RepeatWrapping;
+            texGrass.wrapT = THREE.RepeatWrapping;
+            texGrass.repeat.set(12, 40);
+
+            // Water
+            const waterC = document.createElement('canvas');
+            waterC.width = 256; waterC.height = 256;
+            const ctxW = waterC.getContext('2d');
+            ctxW.fillStyle = '#2980b9';
+            ctxW.fillRect(0,0,256,256);
+            ctxW.fillStyle = '#3498db';
+            for(let i=0; i<50; i++) {
+                ctxW.beginPath();
+                ctxW.arc(Math.random()*256, Math.random()*256, Math.random()*20, 0, Math.PI*2);
+                ctxW.fill();
+            }
+            const texWater = new THREE.CanvasTexture(waterC);
+            texWater.wrapS = THREE.RepeatWrapping;
+            texWater.wrapT = THREE.RepeatWrapping;
+            texWater.repeat.set(4, 10);
+
+            // Carrot
+            const carrotC = document.createElement('canvas');
+            carrotC.width = 128; carrotC.height = 128;
+            const ctxC = carrotC.getContext('2d');
+            const grad = ctxC.createLinearGradient(0,0,128,0);
+            grad.addColorStop(0, '#f39c12');
+            grad.addColorStop(1, '#d35400');
+            ctxC.fillStyle = grad;
+            ctxC.fillRect(0,0,128,128);
+            ctxC.fillStyle = 'rgba(0,0,0,0.15)';
+            for(let i=0; i<8; i++) ctxC.fillRect(0, i*15+10, 128, 3);
+            const texCarrot = new THREE.CanvasTexture(carrotC);
+
+            // Billboards
+            const billC = document.createElement('canvas');
+            billC.width = 64; billC.height = 64;
+            const ctxB = billC.getContext('2d');
+            ctxB.fillStyle = '#6ab04c';
+            ctxB.beginPath();
+            ctxB.moveTo(32, 64);
+            ctxB.lineTo(52, 30);
+            ctxB.lineTo(32, 0); 
+            ctxB.lineTo(12, 30);
+            ctxB.fill();
+            const texBill = new THREE.CanvasTexture(billC);
+
+            mats = {
+                fur: new THREE.MeshLambertMaterial({ map: texFur, color: 0xffffff }),
+                fluff: new THREE.MeshLambertMaterial({ map: texFluff, color: 0xffffff }),
+                pink: new THREE.MeshLambertMaterial({ color: 0xffb7c5 }),
+                eye: new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 200 }),
+                blush: new THREE.MeshBasicMaterial({ color: 0xffa0b0, transparent:true, opacity: 0.6 }),
+                ground: new THREE.MeshStandardMaterial({ map: texGrass, roughness: 1.0, metalness: 0 }),
+                water: new THREE.MeshPhongMaterial({ map: texWater, color: 0x3498db, transparent: true, opacity: 0.8, shininess: 80 }),
+                carrot: new THREE.MeshLambertMaterial({ map: texCarrot }),
+                leaf: new THREE.MeshLambertMaterial({ color: 0x27ae60 }),
+                billboardGrass: new THREE.SpriteMaterial({ map: texBill, color: 0xffffff }),
+                rock: new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.9 }),
+                wood: new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 1.0 }),
+                leafDark: new THREE.MeshStandardMaterial({ color: 0x1e8449, roughness: 0.8 })
+            };
+        }
+
+        function init() {
+            try {
+                generateTextures();
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(CONFIG.colors.fog);
+                scene.fog = new THREE.Fog(CONFIG.colors.fog, 20, 90);
+
+                camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
+                camera.position.set(0, 4, 7); 
+                camera.lookAt(0, 0, -5); 
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('game-container').appendChild(renderer.domElement);
+
+                const ambient = new THREE.AmbientLight(CONFIG.colors.ambient, 0.5);
+                scene.add(ambient);
+
+                const sun = new THREE.DirectionalLight(CONFIG.colors.sun, 1.1);
+                sun.position.set(20, 50, 10);
+                sun.castShadow = true;
+                sun.shadow.mapSize.width = 2048;
+                sun.shadow.mapSize.height = 2048;
+                sun.shadow.camera.left = -30;
+                sun.shadow.camera.right = 30;
+                sun.shadow.camera.top = 50;
+                sun.shadow.camera.bottom = -30;
+                scene.add(sun);
+
+                worldContainer = new THREE.Group();
+                scene.add(worldContainer);
+
+                createEnvironment();
+                createRabbit();
+                
+                // Pre-seed some terrain
+                STATE.nextSpawnZ = -20;
+                for(let i=0; i<15; i++) {
+                    spawnNextChunk();
+                }
+
+                setupInputs();
+                window.addEventListener('resize', onResize);
+
+                clock = new THREE.Clock();
+                ui.loading.innerText = "Tap RUN to Start!";
+                animate();
+
+            } catch (e) {
+                console.error("Game Init Failed:", e);
+            }
+        }
+
+        function createEnvironment() {
+            const geo = new THREE.PlaneGeometry(100, 200);
+            const mesh = new THREE.Mesh(geo, mats.ground);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.z = -50;
+            mesh.receiveShadow = true;
+            scene.add(mesh); 
+            mats.ground.map.repeat.set(12, 40);
+
+            const skyGeo = new THREE.SphereGeometry(100, 16, 16);
+            const skyMat = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide, fog: false });
+            const skyDome = new THREE.Mesh(skyGeo, skyMat);
+            scene.add(skyDome);
+        }
+
+        function createRabbit() {
+            bunnyRig.group = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.SphereGeometry(0.55, 16, 16);
+            bodyGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 0.9, 1.1)); 
+            const body = new THREE.Mesh(bodyGeo, mats.fur);
+            body.castShadow = true;
+            body.position.y = 0.5;
+            bunnyRig.group.add(body);
+
+            // Chest
+            const chestGeo = new THREE.SphereGeometry(0.45, 16, 16);
+            chestGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.2, 0.5));
+            const chest = new THREE.Mesh(chestGeo, mats.fluff);
+            chest.position.set(0, 0.1, -0.4);
+            body.add(chest);
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.55, 16, 16); 
+            headGeo.applyMatrix4(new THREE.Matrix4().makeScale(1.1, 1, 1));
+            const head = new THREE.Mesh(headGeo, mats.fur);
+            head.position.set(0, 1.1, 0); 
+            head.castShadow = true;
+            bunnyRig.head = head;
+            bunnyRig.group.add(head);
+
+            // Blush
+            const blushGeo = new THREE.SphereGeometry(0.12, 8, 8);
+            const blushL = new THREE.Mesh(blushGeo, mats.blush);
+            blushL.position.set(-0.35, -0.15, 0.35);
+            blushL.scale.z = 0.5;
+            head.add(blushL);
+            const blushR = new THREE.Mesh(blushGeo, mats.blush);
+            blushR.position.set(0.35, -0.15, 0.35);
+            blushR.scale.z = 0.5;
+            head.add(blushR);
+
+            // Muzzle
+            const muzzleGeo = new THREE.SphereGeometry(0.2, 16, 16);
+            muzzleGeo.applyMatrix4(new THREE.Matrix4().makeScale(1.2, 0.8, 1));
+            const muzzle = new THREE.Mesh(muzzleGeo, mats.fur);
+            muzzle.position.set(0, -0.2, 0.45);
+            head.add(muzzle);
+
+            // Nose
+            const noseGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            const nose = new THREE.Mesh(noseGeo, mats.pink);
+            nose.position.set(0, 0.05, 0.15);
+            muzzle.add(nose);
+
+            // Eyes
+            const eyeGeo = new THREE.SphereGeometry(0.1, 16, 16);
+            const eyeL = new THREE.Mesh(eyeGeo, mats.eye);
+            eyeL.position.set(-0.25, 0.05, 0.4);
+            head.add(eyeL);
+            const eyeR = new THREE.Mesh(eyeGeo, mats.eye);
+            eyeR.position.set(0.25, 0.05, 0.4);
+            head.add(eyeR);
+
+            // Reflections
+            const reflectGeo = new THREE.SphereGeometry(0.03, 8, 8);
+            const reflectMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const reflectL = new THREE.Mesh(reflectGeo, reflectMat);
+            reflectL.position.set(-0.04, 0.04, 0.08);
+            eyeL.add(reflectL);
+            const reflectR = new THREE.Mesh(reflectGeo, reflectMat);
+            reflectR.position.set(-0.04, 0.04, 0.08);
+            eyeR.add(reflectR);
+
+            // Ears
+            const earGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.9, 16);
+            earGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1, 0.3));
+            
+            const earL = new THREE.Group();
+            const earLMesh = new THREE.Mesh(earGeo, mats.fur);
+            earL.add(earLMesh);
+            const innerL = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.7), mats.pink);
+            innerL.position.set(0, 0, 0.04);
+            earLMesh.add(innerL);
+            
+            earL.position.set(-0.25, 0.4, 0);
+            earL.rotation.x = -0.2;
+            earL.rotation.z = 0.3;
+            head.add(earL);
+            bunnyRig.ears.push(earL);
+
+            const earR = earL.clone();
+            earR.position.set(0.25, 0.4, 0);
+            earR.rotation.z = -0.3;
+            head.add(earR);
+            bunnyRig.ears.push(earR);
+
+            // Tail
+            const tailGeo = new THREE.SphereGeometry(0.25, 16, 16);
+            const tail = new THREE.Mesh(tailGeo, mats.fluff);
+            tail.position.set(0, 0.4, -0.6);
+            bunnyRig.group.add(tail);
+
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.4, 12);
+            legGeo.applyMatrix4(new THREE.Matrix4().makeTranslation(0, -0.2, 0));
+
+            const fLegL = new THREE.Mesh(legGeo, mats.fur);
+            fLegL.position.set(-0.25, 0.4, 0.3);
+            bunnyRig.group.add(fLegL);
+            bunnyRig.frontLegs.push(fLegL);
+            const fLegR = fLegL.clone();
+            fLegR.position.x = 0.25;
+            bunnyRig.group.add(fLegR);
+            bunnyRig.frontLegs.push(fLegR);
+
+            const bLegL = new THREE.Mesh(legGeo, mats.fur);
+            bLegL.position.set(-0.3, 0.4, -0.3);
+            bunnyRig.group.add(bLegL);
+            bunnyRig.backLegs.push(bLegL);
+            const bLegR = bLegL.clone();
+            bLegR.position.x = 0.3;
+            bunnyRig.group.add(bLegR);
+            bunnyRig.backLegs.push(bLegR);
+
+            bunnyRig.group.rotation.y = Math.PI;
+
+            // Shield
+            const shieldG = new THREE.SphereGeometry(1.3, 16, 16);
+            const shieldM = new THREE.MeshBasicMaterial({ color: 0xffff00, opacity: 0.3, transparent: true, wireframe: true });
+            bunnyRig.shield = new THREE.Mesh(shieldG, shieldM);
+            bunnyRig.shield.visible = false;
+            bunnyRig.group.add(bunnyRig.shield);
+
+            scene.add(bunnyRig.group);
+        }
+
+        function startGame() {
+            STATE.score = 0;
+            STATE.distance = 0;
+            STATE.speed = CONFIG.speedBase;
+            STATE.lane = 0;
+            STATE.z = 0;
+            STATE.running = true;
+            STATE.magnet = 0;
+            STATE.shield = 0;
+            STATE.isRolling = false;
+            
+            bunnyRig.group.position.set(0,0,0);
+            bunnyRig.group.rotation.set(0, Math.PI, 0); 
+            worldContainer.position.set(0,0,0);
+
+            // Clean
+            objects.forEach(o => worldContainer.remove(o.mesh));
+            objects = [];
+
+            // UI
+            ui.score.innerText = '0';
+            ui.start.classList.add('hidden');
+            ui.gameOver.classList.add('hidden');
+            ui.magnetBadge.classList.remove('visible');
+            ui.shieldBadge.classList.remove('visible');
+            ui.collision.style.transform = 'translate(-50%, -50%) scale(0)';
+
+            // Spawn
+            STATE.nextSpawnZ = -20;
+            for(let i=0; i<15; i++) spawnNextChunk();
+        }
+
+        // Logic to prevent overlapping:
+        // spawnNextChunk calculates what to spawn, adds it, then advances STATE.nextSpawnZ
+        // by the length of that object + gap.
+        function spawnNextChunk() {
+            const z = STATE.nextSpawnZ;
+            const lane = Math.floor(Math.random()*3)-1;
+            const x = lane * CONFIG.laneWidth;
+            const r = Math.random();
+
+            let objectLength = 0; // Z-length of object
+            const gap = 15; // Standard gap
+
+            // Spawn logic
+            if (r < 0.20) {
+                spawnCarrot(x, z);
+            }
+            else if (r < 0.25) {
+                spawnFlower(x, z, Math.random()>0.5 ? 'magnet' : 'shield');
+            }
+            else if (r < 0.45) {
+                spawnObstacle(x, z);
+            }
+            else if (r < 0.60) {
+                // River takes up ~30 units centered at Z
+                // We need to make sure we don't spawn anything else nearby.
+                // Since river is centered at Z, it goes from Z-15 to Z+15.
+                // Our Z is currently the *start* of the chunk effectively.
+                // Let's shift Z so the river starts here.
+                const riverCenterZ = z - 15; // Shift center back so start is at Z
+                spawnRiver(0, riverCenterZ); 
+                objectLength = 30; // River is long!
+            }
+            else if (r < 0.70) {
+                spawnBridge(x, z);
+            }
+
+            // Decor
+            for(let k=0; k<3; k++) {
+                const sprite = new THREE.Sprite(mats.billboardGrass);
+                const sx = (Math.random() > 0.5 ? 1 : -1) * (4.5 + Math.random() * 8);
+                sprite.position.set(sx, 0.4, z - Math.random()*gap);
+                sprite.scale.set(0.8, 0.8, 0.8);
+                worldContainer.add(sprite);
+                objects.push({ mesh: sprite, type: 'decor', active: false });
+            }
+
+            // Advance spawn pointer
+            STATE.nextSpawnZ -= (gap + objectLength);
+        }
+
+        function spawnRiver(x, z) {
+            const grp = new THREE.Group();
+
+            // Wide Water Plane
+            const wGeo = new THREE.PlaneGeometry(12, 30); 
+            const water = new THREE.Mesh(wGeo, mats.water);
+            water.rotation.x = -Math.PI/2;
+            water.position.y = 0.05; 
+            grp.add(water);
+
+            // Logs
+            const possibleLanes = [-1, 0, 1];
+            possibleLanes.sort(() => Math.random() - 0.5);
+            const safeLaneCount = Math.random() > 0.5 ? 2 : 1;
+            const safeLanes = possibleLanes.slice(0, safeLaneCount);
+
+            safeLanes.forEach(laneIdx => {
+                const lx = laneIdx * CONFIG.laneWidth;
+                const pGeo = new THREE.BoxGeometry(1.5, 0.1, 30.0);
+                const log = new THREE.Mesh(pGeo, mats.wood);
+                log.position.set(lx, 0.1, 0);
+                grp.add(log);
+            });
+
+            grp.position.set(x, 0, z); 
+            worldContainer.add(grp);
+            objects.push({ 
+                mesh: grp, 
+                type: 'river', 
+                active: true, 
+                name: "the River",
+                safeLanes: safeLanes,
+                minZ: z - 15,
+                maxZ: z + 15
+            });
+        }
+
+        // ... Standard spawners (Carrot, Flower, Bridge, Obstacle) same as before ...
+        function spawnBridge(x, z) {
+            const grp = new THREE.Group();
+            const postGeo = new THREE.CylinderGeometry(0.1, 0.1, 2.5);
+            const postL = new THREE.Mesh(postGeo, mats.wood);
+            postL.position.set(-1.2, 1.25, 0);
+            grp.add(postL);
+            const postR = new THREE.Mesh(postGeo, mats.wood);
+            postR.position.set(1.2, 1.25, 0);
+            grp.add(postR);
+            const beamGeo = new THREE.BoxGeometry(3.0, 0.4, 0.4);
+            const beam = new THREE.Mesh(beamGeo, mats.wood);
+            beam.position.set(0, 1.5, 0); 
+            grp.add(beam);
+            grp.position.set(x, 0, z);
+            worldContainer.add(grp);
+            objects.push({ mesh: grp, type: 'bridge', active: true, name: "a Bridge" });
+        }
+
+        function spawnCarrot(x, z) {
+            const grp = new THREE.Group();
+            const geo = new THREE.ConeGeometry(0.2, 0.8, 8);
+            const mesh = new THREE.Mesh(geo, mats.carrot);
+            mesh.rotation.x = Math.PI;
+            mesh.position.y = 0.4;
+            grp.add(mesh);
+            const lGeo = new THREE.CylinderGeometry(0.01, 0.02, 0.4);
+            const l1 = new THREE.Mesh(lGeo, mats.leaf);
+            l1.position.y = 0.9; l1.rotation.z = 0.3;
+            grp.add(l1);
+            const l2 = new THREE.Mesh(lGeo, mats.leaf);
+            l2.position.y = 0.9; l2.rotation.z = -0.3;
+            grp.add(l2);
+            grp.position.set(x, 0.5, z);
+            worldContainer.add(grp);
+            objects.push({ mesh: grp, type: 'carrot', active: true });
+        }
+
+        function spawnFlower(x, z, type) {
+            const grp = new THREE.Group();
+            const color = type === 'magnet' ? 0xff4757 : 0xffa502;
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.6), mats.leaf);
+            stem.position.y = 0.3;
+            grp.add(stem);
+            const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25), new THREE.MeshLambertMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 }));
+            head.position.y = 0.6;
+            grp.add(head);
+            grp.position.set(x, 0, z);
+            worldContainer.add(grp);
+            objects.push({ mesh: grp, type: 'flower', subtype: type, active: true });
+        }
+
+        function spawnObstacle(x, z) {
+            const type = Math.random();
+            let mesh, name;
+            if (type < 0.4) {
+                mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), mats.rock);
+                mesh.position.y = 0.4;
+                mesh.scale.set(1.1, 0.7, 1.0);
+                name = "a Rock";
+            } else if (type < 0.7) {
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 2.0, 6), mats.wood);
+                mesh.rotation.z = Math.PI/2;
+                mesh.position.y = 0.3;
+                name = "a Log";
+            } else {
+                mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), mats.leafDark);
+                mesh.position.y = 0.5;
+                name = "a Bush";
+            }
+            mesh.castShadow = true;
+            mesh.position.set(x, mesh.position.y, z);
+            worldContainer.add(mesh);
+            objects.push({ mesh: mesh, type: 'obstacle', active: true, name: name });
+        }
+
+        function roll() {
+            if (STATE.isJumping) return;
+            STATE.isRolling = true;
+            STATE.rollTimer = CONFIG.rollTime;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+
+            if (STATE.running) {
+                STATE.distance += STATE.speed * dt;
+                STATE.score = Math.floor(STATE.distance);
+                ui.score.innerText = STATE.score;
+                STATE.speed = Math.min(STATE.speed + CONFIG.acceleration * dt, CONFIG.speedMax);
+
+                STATE.animTime += dt * STATE.speed * 0.05; 
+                const dZ = STATE.speed * dt;
+                STATE.z -= dZ;
+                worldContainer.position.z += dZ;
+
+                mats.ground.map.offset.y = -STATE.z * 0.1;
+
+                const tx = STATE.lane * CONFIG.laneWidth;
+                bunnyRig.group.position.x += (tx - bunnyRig.group.position.x) * 12 * dt;
+                const diff = bunnyRig.group.position.x - tx;
+                bunnyRig.group.rotation.z = diff * 0.1;  
+                bunnyRig.group.rotation.y = Math.PI + (diff * -0.1);
+
+                if (STATE.isJumping) {
+                    STATE.y += STATE.vy * dt;
+                    STATE.vy -= CONFIG.gravity * dt;
+                    if (STATE.y <= 0) {
+                        STATE.y = 0;
+                        STATE.isJumping = false;
+                        STATE.vy = 0;
+                    }
+                } else if (!STATE.isRolling) {
+                    STATE.y = Math.abs(Math.sin(STATE.animTime * 1.5)) * 0.1;
+                }
+                
+                if (STATE.isRolling) {
+                    STATE.rollTimer -= dt;
+                    if (STATE.rollTimer <= 0) {
+                        STATE.isRolling = false;
+                        bunnyRig.group.scale.set(1, 1, 1);
+                    } else {
+                        bunnyRig.group.scale.set(1, 0.5, 1);
+                        bunnyRig.group.rotation.x -= 25 * dt; 
+                        STATE.y = 0.2; 
+                    }
+                } else {
+                    bunnyRig.group.rotation.x = 0;
+                }
+
+                bunnyRig.group.position.y = STATE.y;
+
+                animateBunny(STATE.isJumping);
+                updateObjects(dt);
+                updatePowerups(dt);
+
+                // Check distance to last spawn point (relative to world container)
+                // World moves +Z. Spawn point is negative.
+                // Distance = WorldPos + SpawnPos
+                const distToHorizon = worldContainer.position.z + STATE.nextSpawnZ;
+                if (distToHorizon > -100) {
+                     spawnNextChunk();
+                }
+
+            } else {
+                if(bunnyRig.group) bunnyRig.head.rotation.z = Math.sin(Date.now()*0.003)*0.1;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function animateBunny(jumping) {
+            const t = STATE.animTime;
+            const ampF = 0.6;
+            const ampB = 0.5;
+
+            if (jumping) {
+                bunnyRig.frontLegs[0].rotation.x = -0.8;
+                bunnyRig.frontLegs[1].rotation.x = -0.8;
+                bunnyRig.backLegs[0].rotation.x = 0.5;
+                bunnyRig.backLegs[1].rotation.x = 0.5;
+                bunnyRig.ears[0].rotation.x = -0.6;
+                bunnyRig.ears[1].rotation.x = -0.6;
+            } else if (!STATE.isRolling) {
+                bunnyRig.frontLegs[0].rotation.x = Math.sin(t * 1.5) * ampF;
+                bunnyRig.frontLegs[1].rotation.x = Math.sin(t * 1.5 + Math.PI) * ampF;
+                bunnyRig.backLegs[0].rotation.x = Math.sin(t * 1.5 + Math.PI) * ampB;
+                bunnyRig.backLegs[1].rotation.x = Math.sin(t * 1.5) * ampB;
+                bunnyRig.ears[0].rotation.x = -0.3 + Math.sin(t*2)*0.1;
+                bunnyRig.ears[1].rotation.x = -0.3 + Math.cos(t*2)*0.1;
+            }
+        }
+
+        function updateObjects(dt) {
+            const worldZ = worldContainer.position.z;
+            for (let i = objects.length - 1; i >= 0; i--) {
+                const o = objects[i];
+                const trueZ = o.mesh.position.z + worldZ;
+
+                if (trueZ > 20) {
+                    worldContainer.remove(o.mesh);
+                    objects.splice(i, 1);
+                    continue;
+                }
+
+                if (!o.active) continue;
+                if (o.type === 'decor') continue;
+
+                if (STATE.magnet > 0 && o.type === 'carrot') {
+                    if (trueZ > -15 && trueZ < 5) {
+                        const localPlayerZ = -worldContainer.position.z;
+                        o.mesh.position.x += (bunnyRig.group.position.x - o.mesh.position.x) * 8 * dt;
+                        o.mesh.position.z += (localPlayerZ - o.mesh.position.z) * 8 * dt;
+                    }
+                }
+
+                const dx = Math.abs(o.mesh.position.x - bunnyRig.group.position.x);
+                const distZ = Math.abs(trueZ);
+
+                // --- COLLISION LOGIC ---
+                
+                // 1. RIVER CHECK (Independent of dx because it spans full width)
+                if (o.type === 'river') {
+                    // Check if player is strictly inside the river zone
+                    if (trueZ > -14 && trueZ < 14) {
+                        const isSafeLane = o.safeLanes.includes(STATE.lane);
+                        
+                        if (isSafeLane) {
+                            // Safe (Walking on log)
+                        } else {
+                            // Not in safe lane
+                            // Are they high enough to be "jumping over"?
+                            // NOTE: River is long (30), impossible to jump over completely.
+                            // But jumping between logs is allowed.
+                            if (STATE.y < 0.3) {
+                                showCollisionFX(true);
+                                endGame(o.name);
+                            }
+                        }
+                    }
+                }
+                // 2. STANDARD OBSTACLE CHECK (Depends on alignment)
+                else if (dx < 0.6) {
+                    if (o.type === 'bridge' && distZ < 0.8) {
+                        if (!STATE.isRolling) {
+                            showCollisionFX(false);
+                            endGame(o.name);
+                        }
+                    }
+                    else if (distZ < 0.8 && o.type === 'obstacle') {
+                        if (STATE.shield > 0) {
+                            o.active = false; o.mesh.visible = false;
+                            spawnParticles(0xaaaaaa);
+                            STATE.distance += 50;
+                        } 
+                        else if (STATE.y > 0.5) {
+                            // Jumped over
+                        } 
+                        else {
+                            showCollisionFX(false);
+                            endGame(o.name);
+                        }
+                    }
+                    else if (distZ < 0.8 && (o.type === 'carrot' || o.type === 'flower')) {
+                         if (o.type === 'carrot') {
+                            o.active = false; o.mesh.visible = false;
+                            STATE.distance += 50;
+                            ui.score.innerText = Math.floor(STATE.distance);
+                            spawnParticles(0xffa500);
+                        } 
+                        else if (o.type === 'flower') {
+                            o.active = false; o.mesh.visible = false;
+                            activatePower(o.subtype);
+                        } 
+                    }
+                }
+                
+                if (o.type === 'carrot' || o.type === 'flower') o.mesh.rotation.y += 3*dt;
+            }
+        }
+
+        function activatePower(type) {
+            if (type === 'magnet') {
+                STATE.magnet = 8;
+                ui.magnetBadge.classList.add('visible');
+            } else {
+                STATE.shield = 8;
+                ui.shieldBadge.classList.add('visible');
+                bunnyRig.shield.visible = true;
+            }
+        }
+
+        function updatePowerups(dt) {
+            if (STATE.magnet > 0) {
+                STATE.magnet -= dt;
+                ui.magnetFill.style.transform = `scaleX(${STATE.magnet/8})`;
+                if (STATE.magnet <= 0) ui.magnetBadge.classList.remove('visible');
+            }
+            if (STATE.shield > 0) {
+                STATE.shield -= dt;
+                ui.shieldFill.style.transform = `scaleX(${STATE.shield/8})`;
+                if (STATE.shield <= 0) {
+                    ui.shieldBadge.classList.remove('visible');
+                    bunnyRig.shield.visible = false;
+                }
+            }
+        }
+
+        function spawnParticles(col) {
+            const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const mat = new THREE.MeshBasicMaterial({ color: col });
+            for(let i=0; i<8; i++) {
+                const m = new THREE.Mesh(geo, mat);
+                m.position.set(bunnyRig.group.position.x, bunnyRig.group.position.y, 0);
+                m.position.x += (Math.random()-0.5);
+                
+                const vel = new THREE.Vector3((Math.random()-0.5)*5, Math.random()*5, (Math.random()-0.5)*5);
+                scene.add(m);
+                
+                const animateP = () => {
+                    m.position.add(vel.clone().multiplyScalar(0.05));
+                    m.scale.multiplyScalar(0.9);
+                    if (m.scale.x > 0.01) requestAnimationFrame(animateP);
+                    else scene.remove(m);
+                };
+                animateP();
+            }
+        }
+
+        function showCollisionFX(isWater) {
+            ui.collision.style.background = isWater 
+                ? 'radial-gradient(circle, rgba(0, 100, 255, 0.8) 0%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(255,0,0,0.8) 0%, transparent 70%)';
+            ui.collision.style.left = '50%';
+            ui.collision.style.top = '50%';
+            ui.collision.style.transform = 'translate(-50%, -50%) scale(5)';
+            setTimeout(() => {
+                 ui.collision.style.transform = 'translate(-50%, -50%) scale(0)';
+            }, 300);
+        }
+
+        function endGame(reason) {
+            STATE.running = false;
+            ui.finalScore.innerText = Math.floor(STATE.distance); // Show Distance
+            if(reason === "the Stream") {
+                ui.deathReason.innerText = "You fell in the stream!";
+                document.getElementById('game-over-screen').querySelector('h1').innerText = "SPLASH!";
+                document.getElementById('game-over-screen').querySelector('h1').style.webkitTextFillColor = "#3498db";
+            } else {
+                ui.deathReason.innerText = reason ? `You hit ${reason}!` : "You bumped into something!";
+                document.getElementById('game-over-screen').querySelector('h1').innerText = "OUCH!";
+                document.getElementById('game-over-screen').querySelector('h1').style.webkitTextFillColor = "#ff6b6b";
+            }
+            ui.gameOver.classList.remove('hidden');
+        }
+
+        // Avatar Handling
+        ui.avatarOptions.forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                ui.avatarOptions.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                const colHex = opt.getAttribute('data-color');
+                if(mats.fur) mats.fur.color.set(colHex);
+            });
+        });
+
+        let touchX = 0, touchY = 0;
+        let lastTap = 0;
+
+        function setupInputs() {
+            document.addEventListener('touchstart', e => { 
+                touchX=e.touches[0].clientX; 
+                touchY=e.touches[0].clientY; 
+            }, {passive:false});
+            
+            document.addEventListener('touchend', e => {
+                const now = Date.now();
+                const timeDiff = now - lastTap;
+                
+                if (timeDiff < 300 && timeDiff > 0) {
+                    roll();
+                    lastTap = 0; 
+                } else {
+                    lastTap = now;
+                    const dx = e.changedTouches[0].clientX - touchX;
+                    const dy = e.changedTouches[0].clientY - touchY;
+                    handleSwipe(dx, dy);
+                }
+            }, {passive:false});
+
+            document.addEventListener('keydown', e => {
+                if(!STATE.running) return;
+                if(e.key==='ArrowLeft') STATE.lane = Math.max(-1, Math.min(1, STATE.lane - 1));
+                if(e.key==='ArrowRight') STATE.lane = Math.max(-1, Math.min(1, STATE.lane + 1));
+                if(e.key==='ArrowUp' && !STATE.isJumping) {
+                    STATE.isJumping = true;
+                    STATE.vy = CONFIG.jumpForce;
+                }
+                if(e.key==='ArrowDown') roll();
+            });
+
+            document.getElementById('btn-start').addEventListener('click', startGame);
+            document.getElementById('btn-restart').addEventListener('click', startGame);
+        }
+
+        function handleSwipe(dx, dy) {
+            if(!STATE.running) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (Math.abs(dx) > 20) {
+                    const d = dx > 0 ? 1 : -1;
+                    STATE.lane = Math.max(-1, Math.min(1, STATE.lane + d));
+                }
+            } else {
+                if (dy < -20 && !STATE.isJumping) {
+                    STATE.isJumping = true;
+                    STATE.vy = CONFIG.jumpForce;
+                } else if (dy > 20) {
+                    roll(); 
+                }
+            }
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
